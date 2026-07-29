@@ -288,6 +288,9 @@ export default function Home() {
           )}
         </motion.div>
 
+        {/* ── Último Treino COROS ── */}
+        <LastWorkoutCard />
+
         {/* ── Calendário semanal ── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -582,9 +585,6 @@ export default function Home() {
 
       <WeightModal open={weightModalOpen} onClose={handleWeightClose} />
       <StartDateModal open={startDateModalOpen} onClose={() => setStartDateModalOpen(false)} onSave={handleStartDateSave} />
-      {/* Último Treino COROS */}
-      <LastWorkoutCard />
-
       <BottomNav active="home" />
     </div>
   );
