@@ -10,6 +10,7 @@ import {
   TrendingDown, Activity, Moon, Zap, Heart, BarChart2, Plus, Check,
   Settings2, Utensils
 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { getTodayWorkout, getWeekDays, WORKOUT_COLORS, WORKOUT_ICONS } from "@/lib/planData";
 import {
   getTodayChecklist, saveTodayChecklist, getLatestWeight,
@@ -22,6 +23,21 @@ import BottomNav from "@/components/BottomNav";
 import WeightModal from "@/components/WeightModal";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import StartDateModal from "@/components/StartDateModal";
+import { trpc } from "@/lib/trpc";
+
+const HRV_STATUS_COLORS: Record<string, string> = {
+  "Above normal": "text-emerald-400",
+  "Normal": "text-blue-400",
+  "Below normal": "text-amber-400",
+};
+
+const LOAD_COLORS: Record<string, string> = {
+  "Optimized": "text-emerald-400",
+  "Performance": "text-blue-400",
+  "Maintaining": "text-slate-300",
+  "Decreasing": "text-amber-400",
+  "Overreaching": "text-red-400",
+};
 
 const CHECKLIST_ITEMS = [
   { id: "treino",    label: "Treinei hoje" },
@@ -52,6 +68,10 @@ function initStartDate(): Date {
 
 export default function Home() {
   const [, navigate] = useLocation();
+  const { data: corosData, isLoading: corosLoading, refetch: corosRefetch } = trpc.coros.getDashboardData.useQuery(
+    undefined,
+    { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false }
+  );
   const [startDate, setStartDateState] = useState<Date>(initStartDate);
   const [checklist, setChecklist] = useState<Record<string, boolean>>(() => getTodayChecklist());
   const [weightModalOpen, setWeightModalOpen] = useState(false);
@@ -364,30 +384,111 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* ── COROS placeholder ── */}
+        {/* ── Dados COROS (Fase 3 — dados reais) ── */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
           className="bg-slate-900 rounded-2xl border border-white/10 p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Dados COROS</p>
-            <span className="text-xs text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">Fase 3</span>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Dados COROS</p>
+              {corosData?.fetchedAt && (
+                <span className="text-[10px] text-slate-600">
+                  {new Date(corosData.fetchedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => corosRefetch()}
+              disabled={corosLoading}
+              className="p-1.5 rounded-lg hover:bg-slate-800 transition-colors text-slate-500 hover:text-slate-300 disabled:opacity-40"
+              title="Atualizar dados COROS"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", corosLoading && "animate-spin")} />
+            </button>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Sono", icon: <Moon className="w-4 h-4" /> },
-              { label: "HRV", icon: <Activity className="w-4 h-4" /> },
-              { label: "Recuperação", icon: <Zap className="w-4 h-4" /> },
-              { label: "FC Repouso", icon: <Heart className="w-4 h-4" /> },
-              { label: "Carga", icon: <BarChart2 className="w-4 h-4" /> },
-              { label: "Estresse", icon: <Activity className="w-4 h-4" /> },
-            ].map((m, i) => (
-              <div key={i} className="bg-slate-800/60 rounded-xl p-3 text-center">
-                <div className="flex justify-center text-slate-600 mb-1">{m.icon}</div>
-                <p className="text-lg font-bold text-slate-600">—</p>
-                <p className="text-[10px] text-slate-600 uppercase tracking-wide mt-0.5">{m.label}</p>
+          {corosLoading ? (
+            <div className="grid grid-cols-3 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-slate-800/60 rounded-xl p-3 text-center animate-pulse">
+                  <div className="h-4 w-4 bg-slate-700 rounded mx-auto mb-1" />
+                  <div className="h-5 w-10 bg-slate-700 rounded mx-auto mb-1" />
+                  <div className="h-2 w-12 bg-slate-700 rounded mx-auto" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-slate-800/60 rounded-xl p-3 text-center">
+                <div className="flex justify-center text-blue-400 mb-1"><Moon className="w-4 h-4" /></div>
+                <p className={cn("text-sm font-bold", corosData?.sleep ? "text-white" : "text-slate-600")}>
+                  {corosData?.sleep ? corosData.sleep.duration : "—"}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">Sono</p>
+                {corosData?.sleep && (
+                  <p className={cn("text-[10px] mt-0.5 font-semibold",
+                    corosData.sleep.score >= 70 ? "text-emerald-400" :
+                    corosData.sleep.score >= 50 ? "text-amber-400" : "text-red-400"
+                  )}>Score {corosData.sleep.score}</p>
+                )}
               </div>
-            ))}
-          </div>
-          <p className="text-xs text-slate-600 text-center mt-3">Integração COROS disponível na Fase 3</p>
+              <div className="bg-slate-800/60 rounded-xl p-3 text-center">
+                <div className="flex justify-center text-purple-400 mb-1"><Activity className="w-4 h-4" /></div>
+                <p className={cn("text-sm font-bold", corosData?.hrv ? (HRV_STATUS_COLORS[corosData.hrv.status] ?? "text-white") : "text-slate-600")}>
+                  {corosData?.hrv ? `${corosData.hrv.avg} ms` : "—"}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">HRV</p>
+                {corosData?.hrv && (
+                  <p className={cn("text-[10px] mt-0.5", HRV_STATUS_COLORS[corosData.hrv.status] ?? "text-slate-400")}>
+                    {corosData.hrv.status === "Above normal" ? "Acima" : corosData.hrv.status === "Normal" ? "Normal" : "Abaixo"}
+                  </p>
+                )}
+              </div>
+              <div className="bg-slate-800/60 rounded-xl p-3 text-center">
+                <div className="flex justify-center text-emerald-400 mb-1"><Zap className="w-4 h-4" /></div>
+                <p className={cn("text-sm font-bold", corosData?.recovery ? (
+                  corosData.recovery.pct >= 70 ? "text-emerald-400" :
+                  corosData.recovery.pct >= 40 ? "text-amber-400" : "text-red-400"
+                ) : "text-slate-600")}>
+                  {corosData?.recovery ? `${corosData.recovery.pct}%` : "—"}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">Recuperação</p>
+              </div>
+              <div className="bg-slate-800/60 rounded-xl p-3 text-center">
+                <div className="flex justify-center text-red-400 mb-1"><Heart className="w-4 h-4" /></div>
+                <p className={cn("text-sm font-bold", corosData?.restingHr ? "text-white" : "text-slate-600")}>
+                  {corosData?.restingHr ? `${corosData.restingHr} bpm` : "—"}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">FC Repouso</p>
+              </div>
+              <div className="bg-slate-800/60 rounded-xl p-3 text-center">
+                <div className="flex justify-center text-orange-400 mb-1"><BarChart2 className="w-4 h-4" /></div>
+                <p className={cn("text-sm font-bold", corosData?.load ? (LOAD_COLORS[corosData.load.comment] ?? "text-white") : "text-slate-600")}>
+                  {corosData?.load ? corosData.load.shortTerm : "—"}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">Carga</p>
+                {corosData?.load && (
+                  <p className={cn("text-[10px] mt-0.5", LOAD_COLORS[corosData.load.comment] ?? "text-slate-400")}>
+                    {corosData.load.comment}
+                  </p>
+                )}
+              </div>
+              <div className="bg-slate-800/60 rounded-xl p-3 text-center">
+                <div className="flex justify-center text-yellow-400 mb-1"><Activity className="w-4 h-4" /></div>
+                <p className={cn("text-sm font-bold", corosData?.stress ? (
+                  corosData.stress.value <= 25 ? "text-emerald-400" :
+                  corosData.stress.value <= 50 ? "text-amber-400" : "text-red-400"
+                ) : "text-slate-600")}>
+                  {corosData?.stress ? corosData.stress.value : "—"}
+                </p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide mt-0.5">Estresse</p>
+                {corosData?.stress && (
+                  <p className={cn("text-[10px] mt-0.5",
+                    corosData.stress.value <= 25 ? "text-emerald-400" :
+                    corosData.stress.value <= 50 ? "text-amber-400" : "text-red-400"
+                  )}>{corosData.stress.label}</p>
+                )}
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* ── Meta ── */}
