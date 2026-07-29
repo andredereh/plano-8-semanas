@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Plus, TrendingDown, Target } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { getWeightEntries, saveWeightEntry, WeightEntry } from "@/lib/storage";
+import { useWeightSync } from "@/hooks/useDbSync";
 import { cn } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
 import WeightModal from "@/components/WeightModal";
@@ -24,13 +25,25 @@ export default function WeightPage() {
     setEntries(getWeightEntries());
     setModalOpen(false);
   }
+  const { weightHistory } = useWeightSync();
+
+  // Mesclar dados do banco com localStorage (banco tem prioridade)
+  const mergedEntries: WeightEntry[] = weightHistory.length > 0
+    ? weightHistory.map(w => ({
+        date: w.date instanceof Date ? w.date.toISOString().split("T")[0] : String(w.date),
+        weight: w.weight,
+      })).reverse()
+    : entries;
 
   const latest = entries[entries.length - 1];
   const first = entries[0];
   const delta = latest && first ? (latest.weight - first.weight).toFixed(1) : null;
   const toGoal = latest ? (latest.weight - 112).toFixed(1) : null;
 
-  const chartData = entries.map((e) => ({
+  const displayEntries = mergedEntries.length > 0 ? mergedEntries : entries;
+  const latestEntry = displayEntries[displayEntries.length - 1];
+  const firstEntry = displayEntries[0];
+  const chartData = displayEntries.map((e) => ({
     date: e.date.slice(5), // MM-DD
     peso: e.weight,
   }));

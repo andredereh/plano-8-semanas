@@ -24,6 +24,7 @@ import WeightModal from "@/components/WeightModal";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import StartDateModal from "@/components/StartDateModal";
 import { trpc } from "@/lib/trpc";
+import { useChecklistSync, useWorkoutSync, useWeightSync, usePlanConfigSync } from "@/hooks/useDbSync";
 
 const HRV_STATUS_COLORS: Record<string, string> = {
   "Above normal": "text-emerald-400",
@@ -60,10 +61,21 @@ function rpeToIndex(rpe: string): number {
 
 function initStartDate(): Date {
   const stored = localStorage.getItem("p8s_start_date");
-  if (stored) return new Date(stored);
-  const defaultStart = new Date("2026-07-29T12:00:00");
-  persistStartDate(defaultStart);
-  return defaultStart;
+  // Padrão oficial: 03/08/2026 (segunda-feira, início do plano)
+  const officialStart = new Date("2026-08-03T12:00:00");
+  if (stored) {
+    const saved = new Date(stored);
+    // Migrar datas antigas padrão (29/07 ou 27/07) para 03/08
+    const legacyDates = ["2026-07-29", "2026-07-27"];
+    const savedStr = saved.toISOString().slice(0, 10);
+    if (legacyDates.includes(savedStr)) {
+      persistStartDate(officialStart);
+      return officialStart;
+    }
+    return saved;
+  }
+  persistStartDate(officialStart);
+  return officialStart;
 }
 
 export default function Home() {
@@ -80,11 +92,34 @@ export default function Home() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [latestWeight, setLatestWeight] = useState(() => getLatestWeight());
 
+  // ── Sincronização com banco ──────────────────────────────
+  const { syncToDb: syncChecklist } = useChecklistSync(checklist);
+  const { markDone: markWorkoutDb, completedDates } = useWorkoutSync();
+  const { latestWeight: dbWeight, saveWeight: saveWeightDb } = useWeightSync();
+  const { planConfig: dbPlanConfig, savePlanConfig: savePlanConfigDb } = usePlanConfigSync();
+
+  // Sincronizar data de início do banco para o estado local
+  useEffect(() => {
+    if (dbPlanConfig?.startDate) {
+      const d = dbPlanConfig.startDate instanceof Date
+        ? dbPlanConfig.startDate
+        : new Date(String(dbPlanConfig.startDate) + "T12:00:00Z");
+      setStartDateState(d);
+    }
+  }, [dbPlanConfig]);
+
+  // Usar peso do banco se disponível
+  useEffect(() => {
+    if (dbWeight) {
+      setLatestWeight({ date: String(dbWeight.date), weight: dbWeight.weight });
+    }
+  }, [dbWeight]);
+
   const { workout, week, dayInCycle } = getTodayWorkout(startDate);
   const weekDays = getWeekDays(startDate, week);
   const todayStr = toDateStr(new Date());
   const totalDays = 56;
-  const progress = Math.round((dayInCycle / totalDays) * 100);
+  const progress = week === 0 ? 0 : Math.round((dayInCycle / totalDays) * 100);
   const colors = WORKOUT_COLORS[workout.type];
   const icon = WORKOUT_ICONS[workout.type];
 
@@ -98,32 +133,40 @@ export default function Home() {
   useEffect(() => {
     setWorkoutDone(isWorkoutCompleted(todayStr));
   }, [todayStr]);
+  useEffect(() => {
+    const dbDone = completedDates.includes(todayStr);
+    setWorkoutDone(dbDone || isWorkoutCompleted(todayStr));
+  }, [todayStr, completedDates]);
 
   function toggleChecklist(id: string) {
     const updated = { ...checklist, [id]: !checklist[id] };
     setChecklist(updated);
     saveTodayChecklist(updated);
+    syncChecklist(updated);
   }
 
   function handleMarkWorkoutDone() {
     markWorkoutComplete(todayStr);
+    markWorkoutDb(todayStr);
     setWorkoutDone(true);
     const updated = { ...checklist, treino: true };
     setChecklist(updated);
     saveTodayChecklist(updated);
+    syncChecklist(updated);
     setShowCelebration(true);
     setTimeout(() => setShowCelebration(false), 2500);
   }
 
   function handleStartDateSave(date: Date) {
     setStartDateState(date);
+    savePlanConfigDb(date.toISOString().split("T")[0]);
   }
 
   function handleWeightClose() {
-    setLatestWeight(getLatestWeight());
     const updated = { ...checklist, peso: true };
     setChecklist(updated);
     saveTodayChecklist(updated);
+    syncChecklist(updated);
     setWeightModalOpen(false);
   }
 

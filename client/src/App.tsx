@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import PlanPage from "./pages/PlanPage";
 import WeightPage from "./pages/WeightPage";
 import NutritionPage from "./pages/NutritionPage";
+import WeeklyReportPage from "./pages/WeeklyReportPage";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path={"/plano"} component={PlanPage} />
       <Route path={"/nutricao"} component={NutritionPage} />
       <Route path={"/peso"} component={WeightPage} />
+      <Route path={"/relatorio"} component={WeeklyReportPage} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -36,4 +38,3 @@ function App() {
 }
 
 export default App;
-

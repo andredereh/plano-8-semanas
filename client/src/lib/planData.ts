@@ -56,6 +56,46 @@ const WARMUP_B: Exercise[] = [
   { name: "Bons-dias sem peso", detail: "10 repetições" },
 ];
 
+// ── SEMANA 0 — Pré-validação (29/07–02/08) ───────────────────
+export const PRE_WEEK: WeekPlan = {
+  week: 0,
+  title: "Semana 0 — Pré-validação",
+  days: [
+    {
+      dayOfWeek: 3, // Quarta 29/07
+      workout: {
+        type: "corrida", label: "Corrida Leve", duration: "30 min", rpe: "4–5", kcal: "~320",
+        exercises: [
+          { name: "Caminhada aquecimento", detail: "5 min" },
+          { name: "Corrida leve contínua", detail: "20 min — ritmo confortável" },
+          { name: "Caminhada desaquecimento", detail: "5 min" },
+        ],
+        notes: "Pré-validação: avalie como seu corpo responde. Sem pressão de pace.",
+      },
+    },
+    { dayOfWeek: 4, workout: REST }, // Quinta 30/07 — descanso
+    {
+      dayOfWeek: 5, // Sexta 01/08
+      workout: {
+        type: "forca-a", label: "Força A", duration: "40 min", rpe: "5–6", kcal: "~300",
+        exercises: [
+          ...WARMUP_A,
+          { name: "Agachamento livre", detail: "3×12" },
+          { name: "Flexão inclinada (sofá)", detail: "3×10" },
+          { name: "Remada com elástico", detail: "3×12" },
+          { name: "Ponte de glúteo", detail: "3×15" },
+          { name: "Prancha", detail: "3×30 s" },
+        ],
+        notes: "Pré-validação: foco em técnica. Use para calibrar sua forma antes da Semana 1.",
+      },
+    },
+    { dayOfWeek: 6, workout: REST }, // Sábado 02/08 — em aberto
+    { dayOfWeek: 0, workout: REST }, // Domingo 03/08 — início oficial
+    { dayOfWeek: 1, workout: REST },
+    { dayOfWeek: 2, workout: REST },
+  ],
+};
+
 export const PLAN: WeekPlan[] = [
   // ── SEMANAS 1–2 ──────────────────────────────────────────
   {
@@ -587,14 +627,28 @@ export const PLAN: WeekPlan[] = [
 // Helpers
 export function getTodayWorkout(startDate: Date): { workout: Workout; week: number; dayInCycle: number } {
   const today = new Date();
-  const diffMs = today.getTime() - startDate.getTime();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const diffMs = today.getTime() - start.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  // Antes do início ou após o fim: trata como Dia 1 ou Dia 56
+  const todayDow = today.getDay();
+
+  // Semana 0: antes do início oficial (diffDays < 0)
+  if (diffDays < 0) {
+    const dayPlan = PRE_WEEK.days.find((d) => d.dayOfWeek === todayDow);
+    return {
+      workout: dayPlan?.workout ?? REST,
+      week: 0,
+      dayInCycle: 0,
+    };
+  }
+
   const clampedDays = Math.max(0, Math.min(diffDays, 55));
-  const dayInCycle = clampedDays + 1; // 1-indexed
+  const dayInCycle = clampedDays + 1;
   const weekIndex = Math.min(Math.floor(clampedDays / 7), 7);
   const weekPlan = PLAN[weekIndex] ?? PLAN[0];
-  const todayDow = today.getDay();
   const dayPlan = weekPlan.days.find((d) => d.dayOfWeek === todayDow);
   return {
     workout: dayPlan?.workout ?? REST,
