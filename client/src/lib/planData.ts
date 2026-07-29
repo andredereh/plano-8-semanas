@@ -658,8 +658,9 @@ export function getTodayWorkout(startDate: Date): { workout: Workout; week: numb
 }
 
 export function getWeekDays(startDate: Date, week: number): { date: Date; workout: Workout; isToday: boolean; isPast: boolean }[] {
-  const weekPlan = PLAN[Math.min(week - 1, 7)] ?? PLAN[0];
-  const weekStartOffset = (week - 1) * 7;
+  // Semana 0 usa PRE_WEEK; semanas 1–8 usam PLAN
+  const weekPlan = week === 0 ? PRE_WEEK : (PLAN[Math.min(week - 1, 7)] ?? PLAN[0]);
+  const weekStartOffset = week === 0 ? -7 : (week - 1) * 7;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

@@ -21,6 +21,7 @@ import { DAILY_TARGETS } from "@/lib/nutritionData";
 import { cn } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
 import WeightModal from "@/components/WeightModal";
+import LastWorkoutCard from "@/components/LastWorkoutCard";
 import WelcomeBanner from "@/components/WelcomeBanner";
 import StartDateModal from "@/components/StartDateModal";
 import { trpc } from "@/lib/trpc";
@@ -581,6 +582,9 @@ export default function Home() {
 
       <WeightModal open={weightModalOpen} onClose={handleWeightClose} />
       <StartDateModal open={startDateModalOpen} onClose={() => setStartDateModalOpen(false)} onSave={handleStartDateSave} />
+      {/* Último Treino COROS */}
+      <LastWorkoutCard />
+
       <BottomNav active="home" />
     </div>
   );
