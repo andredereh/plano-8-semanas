@@ -2,21 +2,25 @@
 // HOME — Dashboard principal diário
 // Athletic Dark Pro: dados em primeiro lugar, mobile-first
 // ============================================================
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle2, Circle, Dumbbell, Timer, Flame, ChevronRight,
-  TrendingDown, Activity, Moon, Zap, Heart, BarChart2, Plus, Check
+  TrendingDown, Activity, Moon, Zap, Heart, BarChart2, Plus, Check,
+  Settings2
 } from "lucide-react";
-import { PLAN, getTodayWorkout, getWeekDays, WORKOUT_COLORS, WORKOUT_ICONS, WorkoutType } from "@/lib/planData";
+import { getTodayWorkout, getWeekDays, WORKOUT_COLORS, WORKOUT_ICONS } from "@/lib/planData";
 import {
   getTodayChecklist, saveTodayChecklist, getLatestWeight,
-  getStartDate, setStartDate, markWorkoutComplete, isWorkoutCompleted, toDateStr
+  getStartDate, setStartDate as persistStartDate, markWorkoutComplete,
+  isWorkoutCompleted, toDateStr
 } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import BottomNav from "@/components/BottomNav";
 import WeightModal from "@/components/WeightModal";
+import WelcomeBanner from "@/components/WelcomeBanner";
+import StartDateModal from "@/components/StartDateModal";
 
 const CHECKLIST_ITEMS = [
   { id: "treino",    label: "Treinei hoje" },
@@ -37,17 +41,28 @@ function rpeToIndex(rpe: string): number {
   return match ? parseInt(match[1]) - 1 : 4;
 }
 
+// Pré-define 29/07/2026 como data de início se ainda não foi configurada
+function initStartDate(): Date {
+  const stored = localStorage.getItem("p8s_start_date");
+  if (stored) return new Date(stored);
+  // Padrão: 29/07/2026 (segunda-feira, Dia 1 — Força A)
+  const defaultStart = new Date("2026-07-29T12:00:00");
+  persistStartDate(defaultStart);
+  return defaultStart;
+}
+
 export default function Home() {
   const [, navigate] = useLocation();
-  const [startDate] = useState<Date>(() => getStartDate());
+  const [startDate, setStartDateState] = useState<Date>(initStartDate);
   const [checklist, setChecklist] = useState<Record<string, boolean>>(() => getTodayChecklist());
   const [weightModalOpen, setWeightModalOpen] = useState(false);
+  const [startDateModalOpen, setStartDateModalOpen] = useState(false);
   const [workoutDone, setWorkoutDone] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [latestWeight, setLatestWeight] = useState(() => getLatestWeight());
 
   const { workout, week, dayInCycle } = getTodayWorkout(startDate);
   const weekDays = getWeekDays(startDate, week);
-  const latestWeight = getLatestWeight();
   const todayStr = toDateStr(new Date());
   const totalDays = 56;
   const progress = Math.round((dayInCycle / totalDays) * 100);
@@ -67,15 +82,28 @@ export default function Home() {
   function handleMarkWorkoutDone() {
     markWorkoutComplete(todayStr);
     setWorkoutDone(true);
-    toggleChecklist("treino");
+    const updated = { ...checklist, treino: true };
+    setChecklist(updated);
+    saveTodayChecklist(updated);
     setShowCelebration(true);
-    setTimeout(() => setShowCelebration(false), 2000);
+    setTimeout(() => setShowCelebration(false), 2500);
+  }
+
+  function handleStartDateSave(date: Date) {
+    setStartDateState(date);
+  }
+
+  function handleWeightClose() {
+    setLatestWeight(getLatestWeight());
+    const updated = { ...checklist, peso: true };
+    setChecklist(updated);
+    saveTodayChecklist(updated);
+    setWeightModalOpen(false);
   }
 
   const doneCount = Object.values(checklist).filter(Boolean).length;
   const weekTraining = weekDays.filter(d => d.workout.type !== "descanso" && d.isPast).length;
   const weekTotal = weekDays.filter(d => d.workout.type !== "descanso").length;
-
   const dayNames = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
 
   return (
@@ -89,8 +117,17 @@ export default function Home() {
               Semana {week} <span className="text-slate-400 font-normal text-base">· Dia {dayInCycle}</span>
             </h1>
           </div>
-          <div className={cn("px-3 py-1.5 rounded-full text-xs font-bold border", colors.bg, colors.text, colors.border)}>
-            {icon} {workout.label}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setStartDateModalOpen(true)}
+              className="p-2 rounded-xl hover:bg-slate-800 transition-colors text-slate-400 hover:text-white"
+              title="Configurar data de início"
+            >
+              <Settings2 className="w-4 h-4" />
+            </button>
+            <div className={cn("px-3 py-1.5 rounded-full text-xs font-bold border", colors.bg, colors.text, colors.border)}>
+              {icon} {workout.label}
+            </div>
           </div>
         </div>
         {/* Progress bar */}
@@ -106,6 +143,9 @@ export default function Home() {
           <span className="text-xs font-bold text-blue-400 w-10 text-right">{progress}%</span>
         </div>
       </div>
+
+      {/* ── Welcome Banner (notificação do treino) ── */}
+      <WelcomeBanner workout={workout} week={week} dayInCycle={dayInCycle} />
 
       <div className="px-4 py-5 space-y-4">
         {/* ── Treino do dia ── */}
@@ -231,9 +271,8 @@ export default function Home() {
           </div>
         </motion.div>
 
-        {/* ── Peso + Checklist ── */}
+        {/* ── Peso + Checklist resumo ── */}
         <div className="grid grid-cols-2 gap-4">
-          {/* Peso */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -263,7 +302,6 @@ export default function Home() {
             </button>
           </motion.div>
 
-          {/* Checklist resumo */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -326,20 +364,20 @@ export default function Home() {
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Dados COROS</p>
-            <span className="text-xs text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">Em breve</span>
+            <span className="text-xs text-slate-600 bg-slate-800 px-2 py-0.5 rounded-full">Fase 3</span>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Sono", value: "—", icon: <Moon className="w-4 h-4" />, status: "" },
-              { label: "HRV", value: "—", icon: <Activity className="w-4 h-4" />, status: "" },
-              { label: "Recuperação", value: "—", icon: <Zap className="w-4 h-4" />, status: "" },
-              { label: "FC Repouso", value: "—", icon: <Heart className="w-4 h-4" />, status: "" },
-              { label: "Carga", value: "—", icon: <BarChart2 className="w-4 h-4" />, status: "" },
-              { label: "Estresse", value: "—", icon: <Activity className="w-4 h-4" />, status: "" },
+              { label: "Sono", icon: <Moon className="w-4 h-4" /> },
+              { label: "HRV", icon: <Activity className="w-4 h-4" /> },
+              { label: "Recuperação", icon: <Zap className="w-4 h-4" /> },
+              { label: "FC Repouso", icon: <Heart className="w-4 h-4" /> },
+              { label: "Carga", icon: <BarChart2 className="w-4 h-4" /> },
+              { label: "Estresse", icon: <Activity className="w-4 h-4" /> },
             ].map((m, i) => (
               <div key={i} className="bg-slate-800/60 rounded-xl p-3 text-center">
-                <div className="flex justify-center text-slate-500 mb-1">{m.icon}</div>
-                <p className="text-lg font-bold text-slate-600">{m.value}</p>
+                <div className="flex justify-center text-slate-600 mb-1">{m.icon}</div>
+                <p className="text-lg font-bold text-slate-600">—</p>
                 <p className="text-[10px] text-slate-600 uppercase tracking-wide mt-0.5">{m.label}</p>
               </div>
             ))}
@@ -400,7 +438,12 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <WeightModal open={weightModalOpen} onClose={() => setWeightModalOpen(false)} />
+      <WeightModal open={weightModalOpen} onClose={handleWeightClose} />
+      <StartDateModal
+        open={startDateModalOpen}
+        onClose={() => setStartDateModalOpen(false)}
+        onSave={handleStartDateSave}
+      />
       <BottomNav active="home" />
     </div>
   );

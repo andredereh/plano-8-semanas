@@ -589,20 +589,22 @@ export function getTodayWorkout(startDate: Date): { workout: Workout; week: numb
   const today = new Date();
   const diffMs = today.getTime() - startDate.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const dayInCycle = diffDays + 1; // 1-indexed
-  const weekIndex = Math.min(Math.floor(diffDays / 7), 7);
-  const weekPlan = PLAN[weekIndex];
+  // Antes do início ou após o fim: trata como Dia 1 ou Dia 56
+  const clampedDays = Math.max(0, Math.min(diffDays, 55));
+  const dayInCycle = clampedDays + 1; // 1-indexed
+  const weekIndex = Math.min(Math.floor(clampedDays / 7), 7);
+  const weekPlan = PLAN[weekIndex] ?? PLAN[0];
   const todayDow = today.getDay();
   const dayPlan = weekPlan.days.find((d) => d.dayOfWeek === todayDow);
   return {
     workout: dayPlan?.workout ?? REST,
     week: weekIndex + 1,
-    dayInCycle: Math.min(dayInCycle, 56),
+    dayInCycle,
   };
 }
 
 export function getWeekDays(startDate: Date, week: number): { date: Date; workout: Workout; isToday: boolean; isPast: boolean }[] {
-  const weekPlan = PLAN[Math.min(week - 1, 7)];
+  const weekPlan = PLAN[Math.min(week - 1, 7)] ?? PLAN[0];
   const weekStartOffset = (week - 1) * 7;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
