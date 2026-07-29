@@ -120,6 +120,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
