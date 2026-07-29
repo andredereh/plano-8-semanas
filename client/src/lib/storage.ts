@@ -95,3 +95,48 @@ export function toDateStr(date: Date): string {
   return date.toISOString().split("T")[0];
 }
 
+// ── Nutrition log ────────────────────────────────────────────
+const NUTRITION_KEY = "p8s_nutrition";
+
+export interface MealLog {
+  mealId: string;
+  done: boolean;
+  protein: number;
+  kcal: number;
+  note?: string;
+}
+
+export interface DayNutrition {
+  date: string;
+  meals: MealLog[];
+  water: number; // copos de 250ml
+  beliscos: boolean;
+}
+
+export function getTodayNutrition(): DayNutrition {
+  const today = toDateStr(new Date());
+  const raw = localStorage.getItem(NUTRITION_KEY);
+  const entries: DayNutrition[] = raw ? JSON.parse(raw) : [];
+  return entries.find((e) => e.date === today) ?? {
+    date: today,
+    meals: [],
+    water: 0,
+    beliscos: false,
+  };
+}
+
+export function saveTodayNutrition(data: DayNutrition): void {
+  const today = toDateStr(new Date());
+  const raw = localStorage.getItem(NUTRITION_KEY);
+  const entries: DayNutrition[] = raw ? JSON.parse(raw) : [];
+  const idx = entries.findIndex((e) => e.date === today);
+  if (idx >= 0) entries[idx] = data;
+  else entries.push(data);
+  localStorage.setItem(NUTRITION_KEY, JSON.stringify(entries));
+}
+
+export function getNutritionHistory(days = 14): DayNutrition[] {
+  const raw = localStorage.getItem(NUTRITION_KEY);
+  const entries: DayNutrition[] = raw ? JSON.parse(raw) : [];
+  return entries.slice(-days);
+}

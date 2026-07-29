@@ -7,12 +7,14 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import PlanPage from "./pages/PlanPage";
 import WeightPage from "./pages/WeightPage";
+import NutritionPage from "./pages/NutritionPage";
 
 function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/plano"} component={PlanPage} />
+      <Route path={"/nutricao"} component={NutritionPage} />
       <Route path={"/peso"} component={WeightPage} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
@@ -34,3 +36,4 @@ function App() {
 }
 
 export default App;
+
