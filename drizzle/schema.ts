@@ -63,6 +63,33 @@ export const planConfig = mysqlTable("plan_config", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+// ── Alimentos cadastrados pelo usuário ──────────────────────
+export const foods = mysqlTable("foods", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 128 }).notNull(),
+  brand: varchar("brand", { length: 64 }),
+  unit: varchar("unit", { length: 16 }).notNull().default("g"),   // g, ml, unidade
+  servingSize: float("servingSize").notNull().default(100),        // tamanho da porção padrão
+  calories: float("calories").notNull(),                           // kcal por 100g/ml ou por unidade
+  protein: float("protein").notNull(),                             // g por 100g/ml ou por unidade
+  carbs: float("carbs").notNull().default(0),
+  fat: float("fat").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// ── Registros de consumo por refeição ───────────────────────
+export const mealEntries = mysqlTable("meal_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  date: date("date").notNull(),
+  meal: varchar("meal", { length: 32 }).notNull(),   // cafe, almoco, lanche, jantar, ceia
+  foodId: int("foodId").notNull(),
+  quantity: float("quantity").notNull(),              // quantidade em gramas/ml/unidades
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type DailyChecklist = typeof dailyChecklist.$inferSelect;
 export type WeightLog = typeof weightLog.$inferSelect;
 export type NutritionLog = typeof nutritionLog.$inferSelect;

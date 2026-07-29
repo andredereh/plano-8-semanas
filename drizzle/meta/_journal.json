@@ -15,6 +15,13 @@
       "when": 1785303224292,
       "tag": "0001_cultured_franklin_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785343777161,
+      "tag": "0002_friendly_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }
