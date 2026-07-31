@@ -1,4 +1,29 @@
 import { execSync } from "child_process";
+import { existsSync } from "fs";
+
+// Verifica se o manus-mcp-cli está disponível no ambiente atual
+// Fora do Manus (Railway, local sem Manus), retorna false imediatamente
+function isMcpAvailable(): boolean {
+  try {
+    // Tenta localizar o binário no PATH sem executá-lo
+    execSync("which manus-mcp-cli", { timeout: 1000, encoding: "utf-8", stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Cache do resultado para não verificar a cada request
+let _mcpAvailable: boolean | null = null;
+function mcpAvailable(): boolean {
+  if (_mcpAvailable === null) {
+    _mcpAvailable = isMcpAvailable();
+    if (!_mcpAvailable) {
+      console.log("[COROS] manus-mcp-cli não encontrado — integração COROS desativada neste ambiente.");
+    }
+  }
+  return _mcpAvailable;
+}
 import { publicProcedure, router } from "../_core/trpc";
 
 // ─── MCP caller ───────────────────────────────────────────────────────────────
@@ -188,6 +213,7 @@ function validateAgainstPlan(activity: LastActivity, detail: ActivityDetail | nu
 // ─── Router ───────────────────────────────────────────────────────────────────
 export const corosRouter = router({
   getLastActivity: publicProcedure.query(async () => {
+    if (!mcpAvailable()) return { ok: false, activity: null, raw: null };
     try {
       const today = new Date();
       const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -223,6 +249,7 @@ export const corosRouter = router({
   }),
 
   getDashboardData: publicProcedure.query(async () => {
+    if (!mcpAvailable()) return { ok: false, sleep: null, hrv: null, recovery: null, restingHr: null, load: null, stress: null, fetchedAt: new Date().toISOString() };
     try {
       const [sleepRes, hrvRes, recoveryRes, restingHrRes, loadRes, stressRes] =
         await Promise.allSettled([
