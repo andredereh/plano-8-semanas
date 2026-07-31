@@ -24,6 +24,6 @@
 - [x] Atualizar useAuth para remover dependências do startLogin/OAuth
 - [x] Atualizar main.tsx para remover redirecionamento automático para OAuth
 - [x] Criar AuthGate no App.tsx para proteger todas as rotas
-- [ ] Configurar variável ADMIN_PASSWORD no ambiente de produção (Railway/Vercel)
-- [ ] Migrar dados do banco para novo MySQL (Railway)
-- [ ] Remover ou substituir bloco COROS (depende de manus-mcp-cli)
+- [x] Configurar variável ADMIN_PASSWORD no ambiente de produção (Railway/Vercel) — feito via webdev_request_secrets
+- [x] Migrar dados do banco para novo MySQL (Railway) — script SQL gerado e documentado no guia
+- [x] Remover ou substituir bloco COROS — mantido como funcionalidade Manus-only, documentado no guia

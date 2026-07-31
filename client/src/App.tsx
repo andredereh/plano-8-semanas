@@ -10,7 +10,7 @@ import WeightPage from "./pages/WeightPage";
 import NutritionPage from "./pages/NutritionPage";
 import WeeklyReportPage from "./pages/WeeklyReportPage";
 import LoginPage from "./pages/LoginPage";
-import { useAuth } from "./_core/hooks/useAuth";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, refresh } = useAuth();
