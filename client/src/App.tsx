@@ -9,6 +9,27 @@ import PlanPage from "./pages/PlanPage";
 import WeightPage from "./pages/WeightPage";
 import NutritionPage from "./pages/NutritionPage";
 import WeeklyReportPage from "./pages/WeeklyReportPage";
+import LoginPage from "./pages/LoginPage";
+import { useAuth } from "./_core/hooks/useAuth";
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { user, loading, refresh } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage onLoginSuccess={refresh} />;
+  }
+
+  return <>{children}</>;
+}
+
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -30,7 +51,9 @@ function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <AuthGate>
+            <Router />
+          </AuthGate>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
